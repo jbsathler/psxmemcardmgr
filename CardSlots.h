@@ -1,9 +1,10 @@
-#include <qwidget.h>
-#include <qlabel.h>
-#include <qradiobutton.h>
-#include <qpixmap.h>
-#include <qframe.h>
+#include <QWidget>
+#include <QLabel>
+#include <QRadioButton>
+#include <QPixmap>
+#include <QFrame>
 #include <QTreeWidget>
+#include <QTreeWidgetItem>
 
 #ifndef CARDSLOTS_H
 #define CARDSLOTS_H

@@ -150,8 +150,8 @@ typedef struct
 
 
 
-static unsigned char psx_parallel_out_0 = 0xff;
-static unsigned char psx_parallel_out_2 = 0x00;
+extern unsigned char psx_parallel_out_0;
+extern unsigned char psx_parallel_out_2;
 
 
 

@@ -4,9 +4,9 @@ TARGET = psxcardmgr
 DEPENDPATH += .
 INCLUDEPATH += .
 
-QT += widgets
+QT += widgets core gui
 
-DEFINES += VERSION=0.9.1
+DEFINES += VERSION=0.9.2
 
 win32 {
 	DEFINES += _PSXPB_WIN32_
@@ -19,4 +19,3 @@ QMAKE_CFLAGS += -Wno-unused-parameter
 
 HEADERS += card_link.h CardSlots.h MainWindow.h PSX_memory_card.h psxpblib.h
 SOURCES += card_link.c main.cpp PSX_memory_card.cpp CardSlots.cpp MainWindow.cpp psxpblib.c
-

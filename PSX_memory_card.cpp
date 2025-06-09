@@ -1,8 +1,9 @@
-#include <qstring.h>
-#include <qpixmap.h>
-#include <qfile.h>
-#include <qimage.h>
-#include <qcolor.h>
+#include <QString>
+#include <QPixmap>
+#include <QFile>
+#include <QImage>
+#include <QColor>
+#include <QDebug>
 #include "PSX_memory_card.h"
 #include "card_link.h"
 #include <iconv.h>
@@ -26,8 +27,7 @@ PSX_memory_card::PSX_memory_card()
 	for (int i=0; i<15; i++)
 	{
 		slot_icons[i] = new QImage(16, 16, QImage::Format_ARGB32);
-		slot_icons[i]->setColorCount(16);
-		slot_icons[i]->fill(0);
+		slot_icons[i]->fill(Qt::transparent);
 	}
 
 	// New empty card
@@ -47,7 +47,7 @@ PSX_memory_card::~PSX_memory_card()
 int PSX_memory_card::load_file(QString filename)
 {
 	QFile f(filename);
-	f.open( QIODevice::ReadOnly );                      // index set to 0
+	if (!f.open(QIODevice::ReadOnly)) { return 0; }
 	if (f.size()<131072) { return 0; } // the file is too small...
 	if (f.size()==134976)
 	{
@@ -59,7 +59,7 @@ int PSX_memory_card::load_file(QString filename)
 	{
 		qDebug("Reading raw memory card image");
 	}
-	f.read(memoryCard,131072);
+	f.read(memoryCard, 131072);
 	f.close();
 	// Now, lets fill up data
 	update();
@@ -69,8 +69,8 @@ int PSX_memory_card::load_file(QString filename)
 int PSX_memory_card::save_file(QString filename)
 {
 	QFile f(filename);
-	f.open( QIODevice::WriteOnly );
-	f.write(memoryCard,131072);
+	if (!f.open(QIODevice::WriteOnly)) { return 0; }
+	f.write(memoryCard, 131072);
 	f.close();
 	return 0;
 }
@@ -175,7 +175,7 @@ int PSX_memory_card::save_single_game(QString filename, int src_slot)
 
 	// Open the file and write the data
 	QFile f(filename);
-	f.open( QIODevice::WriteOnly);
+	if (!f.open(QIODevice::WriteOnly)) { return 0; }
 	f.write(directory_entry, 128);
 	f.write(save_data, 8192);
 	f.close();
@@ -190,9 +190,9 @@ int PSX_memory_card::load_single_game(QString filename, int dest_slot)
 	int position;
 	qDebug("Loading slot: %d",dest_slot);
 
-		// Open the file and read the data
+	// Open the file and read the data
 	QFile f(filename);
-	f.open(QIODevice::ReadOnly);
+	if (!f.open(QIODevice::ReadOnly)) { return 0; }
 	f.read(directory_entry, 128);
 	f.read(save_data, 8192);
 	f.close();
@@ -572,44 +572,22 @@ bool PSX_memory_card::get_slot_is_free(int slot)
 QPixmap PSX_memory_card::get_slot_icon(int slot)
 {
 	QPixmap pixmap;
-	pixmap.convertFromImage(*slot_icons[slot],0);
-	//pixmap::convertFromImage(slot_icons[slot],0);
+	pixmap.convertFromImage(*slot_icons[slot]);
 	return pixmap;
 }
 
 void PSX_memory_card::set_slot_gameID(int slot, QString newID)
 {
+	const QByteArray id_string = newID.toLatin1();
 	int position;
-	int i=0;
-	int max_title_length=102; // not counting 0
-	const char *id_string = newID.toLatin1().constData();
-
-
-	position=0x80+(slot*0x80);  // get to the start of the frame
-	position+=0x0C;  // go to the product code + Game ID ASCIIZ string
-	position+=10; // jump to the Game ID start
-
-	qDebug("New gameID would be written ad: %0X", position);
-	qDebug("New gameID would be: %s", id_string);
-
-	// write the new game id
-	do
+	position=0x80+(slot*0x80);
+	for (int i=0; i<10; i++)
 	{
-		memoryCard[position+i]=id_string[i];
-		i++;
-	} while ( (id_string[i]!=0)&&(i<max_title_length) );
-
-	// compute the new XOR code
-	unsigned char xor_code=0x00;
-	position=0x80+(slot*0x80);  // get to the start of the frame
-	for (int j=0; j<126; j++)
-	{
-		xor_code = xor_code ^ memoryCard[j+position];
+		if (i<id_string.length())
+			memoryCard[i+position+12]=id_string[i];
+		else
+			memoryCard[i+position+12]=0x00;
 	}
-	memoryCard[position + 127] = xor_code;
-	//memoryCard[position + 127] = 0xFF;
-
-	update();
 }
 
 void PSX_memory_card::set_slot_title(int slot, QString newTitle)
@@ -619,35 +597,14 @@ void PSX_memory_card::set_slot_title(int slot, QString newTitle)
 
 void PSX_memory_card::set_slot_Pcode(int slot, QString newPcode)
 {
+	const QByteArray id_string = newPcode.toLatin1();
 	int position;
-	int i=0;
-	int max_title_length=10; // not counting 0
-	const char *id_string = newPcode.toLatin1().constData();
-
-
-	position=0x80+(slot*0x80);  // get to the start of the frame
-	position+=0x0C;  // go to the product code + Game ID ASCIIZ string
-
-	qDebug("New gameID would be written ad: %0X", position);
-	qDebug("New gameID would be: %s", id_string);
-
-	// write the new game id
-
-	while ( (id_string[i]!=0)&&(i<max_title_length) )
+	position=0x80+(slot*0x80);
+	for (int i=0; i<20; i++)
 	{
-		memoryCard[position+i]=id_string[i];
-		i++;
+		if (i<id_string.length())
+			memoryCard[i+position+0x0C]=id_string[i];
+		else
+			memoryCard[i+position+0x0C]=0x00;
 	}
-
-	// compute the new XOR code
-	unsigned char xor_code=0x00;
-	position=0x80+(slot*0x80);  // get to the start of the frame
-	for (int j=0; j<126; j++)
-	{
-		xor_code = xor_code ^ memoryCard[j+position];
-	}
-	memoryCard[position + 127] = xor_code;
-	//memoryCard[position + 127] = 0xFF;
-
-	update();
 }
